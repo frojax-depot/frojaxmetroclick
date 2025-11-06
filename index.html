@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FROJAX FREE CLICK</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f6f6f8; --card:#ffffff; --muted:#5b5b61; --text:#111111; --gold:#d4af37;
+    --border:#e6e6ea; --black:#111111;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+  .wrap{max-width:920px;margin:0 auto;padding:22px; display:flex; flex-direction:column; gap:16px; align-items:center}
+
+  /* Título “germánica” (fallbacks seguros) */
+  h1{font-size:28px;letter-spacing:.06em;font-weight:900;margin:6px 0 10px;text-align:center;
+     font-family:"Old English Text MT","Goudy Text MT","UnifrakturCook","UnifrakturMaguntia","Germania One",serif}
+
+  /* Logos superiores */
+  .logos-top{display:flex; gap:16px; align-items:center; justify-content:center; margin-bottom:10px}
+  .logos-top img{max-height:78px; width:auto}
+
+  /* Pantalla principal */
+  .display{ background:var(--card); border:2px solid var(--border); border-radius:20px;
+            padding:8px 16px; width:100%; min-height:120px;
+            display:flex; align-items:center; justify-content:center;
+            transition:background .06s ease, transform .06s ease }
+  .display.flash{ background:#000; color:#fff; transform:scale(1.003) }
+  .display.flash .playBtn{ background:#000; color:#fff; border-color:#000 }
+
+  /* Grilla interna: [PLAY] [BPM] [COMPÁS] */
+  .big{ width:100%; max-width:760px; display:grid;
+        grid-template-columns:auto 1fr auto; align-items:center; gap:10px; justify-items:center}
+
+  /* PLAY circular grande; activo = negro */
+  .playBtn{ border:2px solid var(--border); background:#fff; color:#000;
+            border-radius:9999px; padding:18px 22px; font-weight:900; cursor:pointer;
+            min-width:136px; text-align:center; transition:all .15s ease; font-size:20px }
+  .playBtn.on{ background:#000; color:#fff; border-color:#000 }
+
+  /* Números grandes */
+  .big .bpm, .big .sig{font-size:76px; font-weight:900; letter-spacing:0.02em; line-height:1; text-align:center}
+
+  /* Tarjetas y filas */
+  .grid{display:grid; gap:14px; width:100%}
+  @media(min-width:760px){ .grid.cols-2{grid-template-columns:1fr 1fr} }
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px; width:100%}
+  .row{display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap}
+  .titleRow{margin-bottom:8px}
+  label{font-size:12px; color:var(--muted); letter-spacing:.06em}
+
+  /* Controles */
+  input[type="range"]{width:100%}
+  select, input[type="number"], button{
+    background:#fff; color:var(--text); border:1px solid var(--border);
+    border-radius:12px; padding:10px 12px; font-weight:700;
+    text-align-last:center; /* centra el texto del select */
+  }
+  select:focus, input[type="number"]:focus, button:focus{outline:2px solid var(--gold); outline-offset:2px}
+  button{cursor:pointer; transition:background .15s ease, transform .02s ease, border-color .2s}
+  button:hover{background:#fafafa}
+  button:active{transform:translateY(1px)}
+
+  /* BPM predeterminados */
+  .circles{display:flex; flex-wrap:wrap; gap:10px; justify-content:center}
+  .circle{
+    width:58px; height:58px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:900; user-select:none
+  }
+  .circle.active{background:#000; color:#fff; border-color:var(--gold); border-width:2px}
+
+  /* Compás – botones grandes pero compactos */
+  .sigCtrl{display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; width:100%; max-width:480px; margin:0 auto}
+  .sigBox{background:#fff; border:1px solid var(--border); border-radius:14px; padding:10px;
+          display:grid; grid-template-columns:56px 1fr 56px; align-items:center; gap:8px}
+  .sigBox strong{font-size:14px; color:#444; text-align:center}
+  .sigNum{font-size:40px; font-weight:900; text-align:center}
+  .sigBtn{font-size:26px; font-weight:900; padding:14px 0}
+
+  /* Entrenador */
+  .switchRow{display:flex; align-items:center; justify-content:center; gap:12px}
+  .trainerPanel{margin-top:10px}
+  .hidden{display:none}
+
+  /* Links */
+  .links{font-size:12px; letter-spacing:.08em; margin-top:12px; text-align:center}
+  .links .link{color:#444; text-decoration:none; font-weight:800; margin:0 8px}
+  .links .link:hover{color:var(--gold)}
+  .links .dot{color:#bbb; margin:0 6px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- Logos arriba -->
+    <div class="logos-top">
+      <img src="assets/Frojax-Logo2024.png" alt="FROJAX" />
+      <img src="assets/LogoMentoriasDeBateria-Logo.png" alt="Mentorías de Batería" />
+    </div>
+
+    <h1>FROJAX FREE CLICK</h1>
+
+    <!-- Pantalla -->
+    <div id="display" class="display">
+      <div class="big">
+        <button id="playBtn" class="playBtn" aria-pressed="false">PLAY</button>
+        <span id="bpmLabel" class="bpm">120</span>
+        <span id="sigLabel" class="sig">4/4</span>
+      </div>
+    </div>
+
+    <!-- Controles -->
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="row titleRow"><label for="bpm">BPM</label></div>
+        <div class="row" style="width:100%">
+          <input id="bpm" type="range" min="30" max="300" value="120" step="1" />
+        </div>
+        <div class="row titleRow"><label for="vol">VOLUMEN</label></div>
+        <div class="row" style="width:100%">
+          <input id="vol" type="range" min="0" max="1" step="0.001" value="0.5" />
+        </div>
+        <div class="row titleRow"><label>SONIDO / NOTAS POR PULSO</label></div>
+        <div class="row">
+          <select id="soundSelect" aria-label="Sonido">
+            <option value="click">Click</option>
+            <option value="beep">Beep</option>
+            <option value="tick">Tick</option>
+            <option value="cowbell">Cowbell</option>
+          </select>
+          <select id="subdiv" aria-label="Subdivisión">
+            <option value="1">Negras</option>
+            <option value="2">Corcheas</option>
+            <option value="3">Tresillos</option>
+            <option value="4">Semicorcheas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row titleRow"><label>BPM PREDETERMINADOS</label></div>
+        <div class="circles" id="shortcutWrap"></div>
+        <div class="row titleRow" style="margin-top:6px"><label>COMPÁS</label></div>
+        <div class="sigCtrl">
+          <div class="sigBox">
+            <button id="beatsDec" class="sigBtn">−</button>
+            <div style="text-align:center">
+              <strong>TIEMPOS</strong>
+              <div id="beatsVal" class="sigNum">4</div>
+            </div>
+            <button id="beatsInc" class="sigBtn">+</button>
+          </div>
+          <div class="sigBox">
+            <button id="denDec" class="sigBtn">−</button>
+            <div style="text-align:center">
+              <strong>VALOR</strong>
+              <div id="denVal" class="sigNum">4</div>
+            </div>
+            <button id="denInc" class="sigBtn">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Entrenador -->
+    <div class="card" style="text-align:center">
+      <div class="switchRow titleRow">
+        <label>MODO ENTRENADOR</label>
+        <button id="trainerToggle" class="playBtn" aria-pressed="false">OFF</button>
+      </div>
+      <div id="trainerPanel" class="trainerPanel hidden" aria-hidden="true">
+        <div class="row">
+          <label for="tStart">INICIO (BPM)</label>
+          <input id="tStart" type="number" min="30" max="300" value="90" style="width:96px" />
+          <label for="tEnd">FINAL (BPM)</label>
+          <input id="tEnd" type="number" min="30" max="300" value="140" style="width:96px" />
+          <label for="tMins">DURACIÓN (min)</label>
+          <input id="tMins" type="number" min="1" max="90" value="5" style="width:96px" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Links -->
+    <div class="links">
+      <a class="link" href="https://instagram.com/frojax" target="_blank" rel="noopener">INSTAGRAM</a>
+      <span class="dot">•</span>
+      <a class="link" href="https://www.frojax.com/lecciones-y-clinicas" target="_blank" rel="noopener">MENTORÍAS / LECCIONES</a>
+      <span class="dot">•</span>
+      <a class="link" href="https://www.frojax.com" target="_blank" rel="noopener">FROJAX.COM</a>
+    </div>
+
+  </div>
+
+<!-- ================== JS ================== -->
+<script>
+(function(){
+  // ----- ESTADO -----
+  const state = {
+    tocando:false,
+    bpm:120,
+    volumen:0.5,
+    tiempos:4,
+    valor:4,
+    paso:0,
+    subdiv:1, // 1=negras, 2=corcheas, 3=tresillos, 4=semicorcheas
+    audioCtx:null,
+    proximo:0,
+    ventana:0.1,   // segundos de anticipación
+    lookahead:25,  // ms entre ciclos del scheduler
+    timerID:null,
+    sonido:'click',
+    // Entrenador
+    entrenadorOn:false,
+    inicioBpm:90,
+    finBpm:140,
+    duracionMin:5,
+    inicioTiempoAudio:0
+  };
+
+  // ----- DOM -----
+  const el = {
+    display: document.getElementById('display'),
+    playBtn: document.getElementById('playBtn'),
+    bpmLabel: document.getElementById('bpmLabel'),
+    sigLabel: document.getElementById('sigLabel'),
+    bpm: document.getElementById('bpm'),
+    vol: document.getElementById('vol'),
+    subdiv: document.getElementById('subdiv'),
+    soundSelect: document.getElementById('soundSelect'),
+    shortcuts: document.getElementById('shortcutWrap'),
+    // Compás
+    beatsVal: document.getElementById('beatsVal'),
+    denVal: document.getElementById('denVal'),
+    beatsInc: document.getElementById('beatsInc'),
+    beatsDec: document.getElementById('beatsDec'),
+    denInc: document.getElementById('denInc'),
+    denDec: document.getElementById('denDec'),
+    // Entrenador
+    trainerToggle: document.getElementById('trainerToggle'),
+    trainerPanel: document.getElementById('trainerPanel'),
+    tStart: document.getElementById('tStart'),
+    tEnd: document.getElementById('tEnd'),
+    tMins: document.getElementById('tMins'),
+  };
+
+  // ----- HELPERS -----
+  const clamp = (n,min,max)=> Math.max(min, Math.min(max, Number(n)));
+
+  function actualizarEtiquetas(){
+    el.bpmLabel.textContent = Math.round(state.bpm);
+    el.sigLabel.textContent = `${state.tiempos}/${state.valor}`;
+    el.beatsVal.textContent = state.tiempos;
+    el.denVal.textContent = state.valor;
+  }
+
+  function flash(){
+    el.display.classList.add('flash');
+    clearTimeout(flash._t);
+    flash._t = setTimeout(()=> el.display.classList.remove('flash'), 80);
+  }
+
+  function initAudio(){
+    if(!state.audioCtx){
+      state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+
+  function intervaloS(){
+    // duración de una negra
+    const negra = 60 / state.bpm;
+    // ajusta por denominador (ej: 6/8 => valor=8)
+    const pulso = negra * (4 / state.valor);
+    // subdivisión (tresillos = 3, etc.)
+    return pulso / state.subdiv;
+  }
+
+  function programarTick(t){
+    const ticksPorCompas = state.tiempos * state.subdiv;
+    const pasoEnCompas = state.paso % ticksPorCompas;
+    const esPulso = (pasoEnCompas % state.subdiv) === 0;
+    const acento = (pasoEnCompas === 0);
+
+    reproducir(t, {acento, esPulso});
+    if(esPulso) requestAnimationFrame(flash);
+
+    state.paso = (state.paso + 1) % ticksPorCompas;
+
+    // Entrenador: si está ON y suena, mueve el BPM
+    if(state.entrenadorOn && state.tocando){
+      const elapsed = (state.audioCtx.currentTime - state.inicioTiempoAudio);
+      const total = state.duracionMin * 60;
+      const p = Math.min(1, total>0 ? (elapsed/total) : 1);
+      const nextBpm = state.inicioBpm + (state.finBpm - state.inicioBpm)*p;
+      setBpm(nextBpm);
+    }
+  }
+
+  function scheduler(){
+    while(state.proximo < state.audioCtx.currentTime + state.ventana){
+      programarTick(state.proximo);
+      state.proximo += intervaloS();
+    }
+    state.timerID = setTimeout(scheduler, state.lookahead);
+  }
+
+  // ----- SONIDO -----
+  function reproducir(time, {acento=false, esPulso=false}={}){
+    const ctx = state.audioCtx; if(!ctx) return;
+    const vol = ctx.createGain();
+    vol.gain.value = acento ? state.volumen : state.volumen * (esPulso ? 0.8 : 0.55);
+    vol.connect(ctx.destination);
+
+    const s = state.sonido;
+    if(s === 'click'){
+      const o = ctx.createOscillator(); o.type='square'; o.frequency.setValueAtTime(acento?2000:1500, time);
+      const env = ctx.createGain(); env.gain.setValueAtTime(0.001, time);
+      env.gain.exponentialRampToValueAtTime(1.0, time+0.001);
+      env.gain.exponentialRampToValueAtTime(0.0001, time+0.03);
+      o.connect(env).connect(vol); o.start(time); o.stop(time+0.04);
+    } else if(s === 'beep'){
+      const o = ctx.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(acento?1200:880, time);
+      const env = ctx.createGain(); env.gain.setValueAtTime(0.001, time);
+      env.gain.exponentialRampToValueAtTime(1.0, time+0.002);
+      env.gain.exponentialRampToValueAtTime(0.0001, time+0.08);
+      o.connect(env).connect(vol); o.start(time); o.stop(time+0.09);
+    } else if(s === 'tick'){
+      const bufferSize = 0.02 * ctx.sampleRate;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let i=0;i<bufferSize;i++){ data[i] = (Math.random()*2-1) * Math.pow(1-i/bufferSize, 6); }
+      const src = ctx.createBufferSource(); src.buffer = buffer; src.connect(vol); src.start(time);
+    } else if(s === 'cowbell'){
+      const o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
+      o1.type='square'; o2.type='square';
+      o1.frequency.setValueAtTime(acento?800:700, time);
+      o2.frequency.setValueAtTime(acento?1200:1100, time);
+      const mix = ctx.createGain(); const env = ctx.createGain(); env.gain.setValueAtTime(0.001, time);
+      env.gain.exponentialRampToValueAtTime(1.0, time+0.001);
+      env.gain.exponentialRampToValueAtTime(0.0001, time+0.06);
+      o1.connect(mix); o2.connect(mix); mix.connect(env).connect(vol); o1.start(time); o2.start(time); o1.stop(time+0.08); o2.stop(time+0.08);
+    }
+  }
+
+  // ----- TRANSPORTE -----
+  function play(){
+    initAudio();
+    state.tocando = true;
+    el.playBtn.classList.add('on');
+    el.playBtn.textContent = 'PAUSA';
+    state.paso = 0;
+    state.proximo = state.audioCtx.currentTime + 0.05;
+    state.inicioTiempoAudio = state.audioCtx.currentTime;
+    scheduler();
+  }
+  function stop(){
+    state.tocando = false;
+    el.playBtn.classList.remove('on');
+    el.playBtn.textContent = 'PLAY';
+    clearTimeout(state.timerID); state.timerID = null;
+  }
+  function togglePlay(){ state.tocando ? stop() : play(); }
+
+  function setBpm(v){
+    state.bpm = clamp(v, 30, 300);
+    el.bpm.value = state.bpm;
+    actualizarEtiquetas();
+    resaltarAtajo(state.bpm);
+  }
+
+  function resaltarAtajo(bpm){
+    const nodes = el.shortcuts.querySelectorAll('.circle');
+    nodes.forEach(n=> n.classList.toggle('active', Number(n.dataset.bpm) === Math.round(bpm)));
+  }
+
+  // ----- BPM predeterminados -----
+  for(let v=50; v<=200; v+=25){
+    const b = document.createElement('button');
+    b.className = 'circle'; b.textContent = v; b.dataset.bpm = v;
+    b.addEventListener('click', ()=> setBpm(v));
+    el.shortcuts.appendChild(b);
+  }
+  resaltarAtajo(state.bpm);
+
+  // ----- Eventos UI -----
+  el.playBtn.addEventListener('click', togglePlay);
+  el.bpm.addEventListener('input', e=> setBpm(e.target.value));
+  el.vol.addEventListener('input', e=> state.volumen = Number(e.target.value));
+  el.subdiv.addEventListener('change', e=> state.subdiv = Number(e.target.value));
+  el.soundSelect.addEventListener('change', e=> state.sonido = e.target.value);
+
+  // Compás
+  function setTiempos(v){ state.tiempos = clamp(v,1,12); actualizarEtiquetas(); }
+  function setValor(v){ state.valor = [2,4,8,16].includes(Number(v)) ? Number(v) : state.valor; actualizarEtiquetas(); }
+  const nextDen = v => (v===2?4 : v===4?8 : v===8?16 : 16);
+  const prevDen = v => (v===16?8 : v===8?4 : v===4?2 : 2);
+  el.beatsInc.addEventListener('click', ()=> setTiempos(state.tiempos+1));
+  el.beatsDec.addEventListener('click', ()=> setTiempos(state.tiempos-1));
+  el.denInc.addEventListener('click', ()=> setValor(nextDen(state.valor)));
+  el.denDec.addEventListener('click', ()=> setValor(prevDen(state.valor)));
+
+  // Entrenador ON/OFF (no inicia el metrónomo)
+  function toggleTrainer(){
+    state.entrenadorOn = !state.entrenadorOn;
+    el.trainerToggle.classList.toggle('on', state.entrenadorOn);
+    el.trainerToggle.textContent = state.entrenadorOn ? 'ON' : 'OFF';
+    el.trainerPanel.classList.toggle('hidden', !state.entrenadorOn);
+    if(state.entrenadorOn){
+      state.inicioBpm = clamp(el.tStart.value, 30, 300);
+      state.finBpm = clamp(el.tEnd.value, 30, 300);
+      state.duracionMin = clamp(el.tMins.value, 1, 240);
+      setBpm(state.inicioBpm);
+    }
+  }
+  el.trainerToggle.addEventListener('click', toggleTrainer);
+
+  actualizarEtiquetas();
+})();
+</script>
+</body>
+</html>
